@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(adb logcat *)",
+      "Bash(\"D:/develop/Android/SDK/platform-tools/adb.exe\" logcat *)"
+    ]
+  }
+}
