@@ -2,7 +2,10 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:background="?attr/selectableItemBackground"
+    android:background="@android:color/white"
+    android:layout_marginHorizontal="12dp"
+    android:layout_marginTop="8dp"
+    android:elevation="2dp"
     android:gravity="center_vertical"
     android:orientation="horizontal"
     android:paddingHorizontal="16dp"
@@ -55,5 +58,19 @@
         android:text="BLE"
         android:textColor="@android:color/white"
         android:textSize="11sp" />
+
+    <!-- 断开按钮 -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btn_disconnect"
+        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+        android:layout_width="wrap_content"
+        android:layout_height="32dp"
+        android:layout_marginStart="8dp"
+        android:text="断开"
+        android:textColor="#F44336"
+        android:textSize="12sp"
+        app:strokeColor="#F44336"
+        app:cornerRadius="4dp"
+        xmlns:app="http://schemas.android.com/apk/res-auto" />
 
 </LinearLayout>

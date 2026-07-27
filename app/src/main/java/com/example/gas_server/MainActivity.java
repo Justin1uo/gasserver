@@ -55,16 +55,6 @@ public class MainActivity extends AppCompatActivity {
         }
 
         @Override
-        public void onScanStateChanged(BluetoothServerManager.ScanState state) {
-            deviceFragment.onScanStateChanged(state);
-        }
-
-        @Override
-        public void onDeviceFound(BluetoothServerManager.ScannedDevice device) {
-            deviceFragment.onDeviceFound(device);
-        }
-
-        @Override
         public void onConnectionResult(BluetoothDevice device, boolean success, String message) {
             homeFragment.onConnectionResult(device, success, message);
             deviceFragment.onConnectionResult(device, success, message);
@@ -90,6 +80,9 @@ public class MainActivity extends AppCompatActivity {
 
         initNavigation();
         requestPermissions();
+
+        // 蓝牙服务常驻：App 启动即开启 BLE 广播
+        btServerManager.start();
     }
 
     private void initNavigation() {
@@ -131,28 +124,17 @@ public class MainActivity extends AppCompatActivity {
         return btServerManager;
     }
 
-    public boolean hasScanPermissions() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            return ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_SCAN) == PackageManager.PERMISSION_GRANTED
-                    && ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED;
-        } else {
-            return ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED;
-        }
-    }
-
     private void requestPermissions() {
         String[] permissions;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             permissions = new String[]{
                     Manifest.permission.BLUETOOTH_ADVERTISE,
-                    Manifest.permission.BLUETOOTH_CONNECT,
-                    Manifest.permission.BLUETOOTH_SCAN,
-                    Manifest.permission.ACCESS_FINE_LOCATION
+                    Manifest.permission.BLUETOOTH_CONNECT
             };
         } else {
             permissions = new String[]{
-                    Manifest.permission.ACCESS_FINE_LOCATION,
-                    Manifest.permission.ACCESS_COARSE_LOCATION
+                    Manifest.permission.BLUETOOTH,
+                    Manifest.permission.BLUETOOTH_ADMIN
             };
         }
 

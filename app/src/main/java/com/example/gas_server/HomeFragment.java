@@ -98,19 +98,12 @@ public class HomeFragment extends Fragment {
     void onModeChanged(BluetoothServerManager.BluetoothMode mode) {
         if (!isAdded()) return;
         requireActivity().runOnUiThread(() -> {
-            switch (mode) {
-                case BLE_GATT:
-                    tvBtMode.setText("BLE GATT");
-                    tvBtMode.setBackgroundResource(R.drawable.status_green);
-                    break;
-                case SPP:
-                    tvBtMode.setText("经典蓝牙 SPP");
-                    tvBtMode.setBackgroundResource(R.drawable.status_yellow);
-                    break;
-                default:
-                    tvBtMode.setText("未启动");
-                    tvBtMode.setBackgroundResource(R.drawable.status_gray);
-                    break;
+            if (mode == BluetoothServerManager.BluetoothMode.BLE_GATT) {
+                tvBtMode.setText("BLE GATT");
+                tvBtMode.setBackgroundResource(R.drawable.status_green);
+            } else {
+                tvBtMode.setText("未启动");
+                tvBtMode.setBackgroundResource(R.drawable.status_gray);
             }
         });
     }
@@ -118,9 +111,7 @@ public class HomeFragment extends Fragment {
     void onAdvertisingChanged(boolean active) {
         if (!isAdded()) return;
         requireActivity().runOnUiThread(() -> {
-            String modeText = btServerManager.getCurrentMode() ==
-                    BluetoothServerManager.BluetoothMode.SPP ? "SPP 监听中" : "BLE 广播中";
-            tvAdvertisingStatus.setText(active ? modeText : "未启动");
+            tvAdvertisingStatus.setText(active ? "BLE 广播中" : "未启动");
             tvAdvertisingStatus.setBackgroundResource(
                     active ? R.drawable.status_green : R.drawable.status_gray);
         });
@@ -170,19 +161,9 @@ public class HomeFragment extends Fragment {
     }
 
     private void startSimulation() {
-        if (!btServerManager.isBluetoothAvailable()) {
-            Toast.makeText(requireContext(), "设备不支持蓝牙", Toast.LENGTH_LONG).show();
-            return;
-        }
-        if (!btServerManager.isBluetoothEnabled()) {
-            Toast.makeText(requireContext(), "请先开启蓝牙", Toast.LENGTH_LONG).show();
-            return;
-        }
-
         isSimulating = true;
         dataCount = 0;
 
-        btServerManager.start();
         dataSimulator.start();
         startSendLoop();
         startUiUpdateLoop();
@@ -194,7 +175,6 @@ public class HomeFragment extends Fragment {
     private void stopSimulation() {
         isSimulating = false;
         dataSimulator.stop();
-        btServerManager.stop();
         handler.removeCallbacksAndMessages(null);
 
         btnToggle.setText("开始模拟");

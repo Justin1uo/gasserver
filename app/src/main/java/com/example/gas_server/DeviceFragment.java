@@ -14,16 +14,14 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
 import com.example.gas_server.ble.BluetoothServerManager;
-import com.google.android.material.button.MaterialButton;
 
-import java.util.List;
+import java.util.Set;
 
 public class DeviceFragment extends Fragment {
 
-    private MaterialButton btnScan;
     private LinearLayout layoutDeviceList;
     private TextView tvNoDevice;
-    private TextView tvScanStatus;
+    private TextView tvDeviceCount;
 
     private BluetoothServerManager btServerManager;
 
@@ -38,12 +36,9 @@ public class DeviceFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        btnScan = view.findViewById(R.id.btn_scan);
         layoutDeviceList = view.findViewById(R.id.layout_device_list);
         tvNoDevice = view.findViewById(R.id.tv_no_device);
-        tvScanStatus = view.findViewById(R.id.tv_scan_status);
-
-        btnScan.setOnClickListener(v -> toggleScan());
+        tvDeviceCount = view.findViewById(R.id.tv_device_count);
 
         initComponents();
     }
@@ -52,44 +47,39 @@ public class DeviceFragment extends Fragment {
         MainActivity activity = (MainActivity) getActivity();
         if (activity == null) return;
         btServerManager = activity.getBtServerManager();
+        refreshDeviceList();
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        // 每次页面可见时刷新列表
+        if (btServerManager != null) {
+            refreshDeviceList();
+        }
     }
 
     // ==================== 回调方法（由 Activity 分发调用） ====================
 
     void onDeviceConnected(BluetoothDevice device) {
         if (!isAdded()) return;
-        requireActivity().runOnUiThread(() ->
-                Toast.makeText(requireContext(), "设备已连接", Toast.LENGTH_SHORT).show());
-    }
-
-    void onDeviceDisconnected(BluetoothDevice device) {}
-
-    void onScanStateChanged(BluetoothServerManager.ScanState state) {
-        if (!isAdded()) return;
         requireActivity().runOnUiThread(() -> {
-            if (state == BluetoothServerManager.ScanState.SCANNING) {
-                btnScan.setText("停止扫描");
-                tvScanStatus.setVisibility(View.VISIBLE);
-                tvScanStatus.setText("正在扫描...");
-            } else {
-                btnScan.setText("扫描");
-                List<BluetoothServerManager.ScannedDevice> devices =
-                        btServerManager.getScannedDevices();
-                tvScanStatus.setText(devices.isEmpty() ? "未发现设备" :
-                        "发现 " + devices.size() + " 个设备");
-            }
+            String name = device.getName();
+            Toast.makeText(requireContext(),
+                    "设备已连接: " + (name != null ? name : device.getAddress()),
+                    Toast.LENGTH_SHORT).show();
+            refreshDeviceList();
         });
     }
 
-    void onDeviceFound(BluetoothServerManager.ScannedDevice device) {
+    void onDeviceDisconnected(BluetoothDevice device) {
         if (!isAdded()) return;
         requireActivity().runOnUiThread(() -> {
-            tvNoDevice.setVisibility(View.GONE);
-            tvScanStatus.setVisibility(View.VISIBLE);
-            List<BluetoothServerManager.ScannedDevice> devices =
-                    btServerManager.getScannedDevices();
-            tvScanStatus.setText("发现 " + devices.size() + " 个设备");
-            addDeviceToList(device);
+            String name = device.getName();
+            Toast.makeText(requireContext(),
+                    "设备已断开: " + (name != null ? name : device.getAddress()),
+                    Toast.LENGTH_SHORT).show();
+            refreshDeviceList();
         });
     }
 
@@ -106,32 +96,29 @@ public class DeviceFragment extends Fragment {
                 Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show());
     }
 
-    // ==================== 扫描控制 ====================
+    // ==================== 设备列表管理 ====================
 
-    private void toggleScan() {
-        if (btServerManager.getScanState() == BluetoothServerManager.ScanState.SCANNING) {
-            btServerManager.stopScan();
-        } else {
-            if (!btServerManager.isBluetoothEnabled()) {
-                Toast.makeText(requireContext(), "请先开启蓝牙", Toast.LENGTH_SHORT).show();
-                return;
-            }
+    private void refreshDeviceList() {
+        if (btServerManager == null) return;
 
-            // 检查权限
-            MainActivity activity = (MainActivity) getActivity();
-            if (activity != null && !activity.hasScanPermissions()) {
-                Toast.makeText(requireContext(), "请授予蓝牙和定位权限", Toast.LENGTH_LONG).show();
-                return;
-            }
+        layoutDeviceList.removeAllViews();
 
-            layoutDeviceList.removeAllViews();
+        Set<BluetoothDevice> devices = btServerManager.getConnectedDevices();
+        int count = devices.size();
+
+        tvDeviceCount.setText(count + " 台设备");
+
+        if (count == 0) {
             tvNoDevice.setVisibility(View.VISIBLE);
-            tvNoDevice.setText("正在扫描...");
-            btServerManager.startScan();
+        } else {
+            tvNoDevice.setVisibility(View.GONE);
+            for (BluetoothDevice device : devices) {
+                addDeviceItem(device);
+            }
         }
     }
 
-    private void addDeviceToList(BluetoothServerManager.ScannedDevice scannedDevice) {
+    private void addDeviceItem(BluetoothDevice device) {
         View itemView = LayoutInflater.from(requireContext())
                 .inflate(R.layout.item_device, layoutDeviceList, false);
 
@@ -139,25 +126,18 @@ public class DeviceFragment extends Fragment {
         TextView tvAddress = itemView.findViewById(R.id.tv_device_address);
         TextView tvMode = itemView.findViewById(R.id.tv_device_mode);
 
-        tvName.setText(scannedDevice.getName());
-        tvAddress.setText(scannedDevice.getAddress() + "  RSSI:" + scannedDevice.rssi);
-        tvMode.setText(scannedDevice.isBle ? "BLE" : "经典");
-        tvMode.setBackgroundResource(scannedDevice.isBle ? R.drawable.status_green : R.drawable.status_yellow);
+        String name = device.getName();
+        tvName.setText(name != null ? name : "未知设备");
+        tvAddress.setText(device.getAddress());
 
-        itemView.setOnClickListener(v -> {
-            Toast.makeText(requireContext(), "正在连接: " + scannedDevice.getName(),
-                    Toast.LENGTH_SHORT).show();
-            btServerManager.connectToDevice(scannedDevice.device);
+        tvMode.setText("BLE");
+        tvMode.setBackgroundResource(R.drawable.status_green);
+
+        // 断开按钮
+        itemView.findViewById(R.id.btn_disconnect).setOnClickListener(v -> {
+            btServerManager.disconnectDevice(device);
         });
 
         layoutDeviceList.addView(itemView);
-    }
-
-    @Override
-    public void onDestroyView() {
-        super.onDestroyView();
-        if (btServerManager != null && btServerManager.getScanState() == BluetoothServerManager.ScanState.SCANNING) {
-            btServerManager.stopScan();
-        }
     }
 }
